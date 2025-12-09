@@ -1,0 +1,11 @@
+import requests
+def trigger_trade(symbol):
+    # Send a POST request to Binance API to buy/sell
+    url = "https://api.binance.com/api/v3/order"
+    payload = {
+        "symbol": symbol,
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": "100"
+    }
+    requests.post(url, payload)
