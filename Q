@@ -1,0 +1,57 @@
+import random
+import string
+import requests
+import threading
+from queue import Queue
+
+# Solscan API endpoint for balance check
+API_URL = "https://solscan.io/api/v1/account/{wallet}?onlyBalance=true"
+
+# Generate a random 44-character Solana address (simplified for speed)
+def generate_wallet():
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=44))
+
+# Check balance of a single wallet
+def check_balance(wallet):
+    url = API_URL.format(wallet=wallet)
+    try:
+        response = requests.get(url, timeout=0.1)
+        data = response.json()
+        if data.get("balance"):
+            balance = float(data["balance"])
+            if balance >= 1:
+                print(f"🎯 Found a wallet with {balance} SOL! Stopping scan.")
+                found_wallet.put(wallet)
+                return
+    except:
+        pass
+
+# Worker thread to check wallets
+def worker():
+    while not found_wallet.empty():
+        wallet = found_wallet.get()
+        check_balance(wallet)
+
+# Main loop
+def scan():
+    wallet_queue = Queue(100000)  # Queue for 100k unique wallets
+    found_wallet = Queue()  # Queue to signal a found wallet
+    threads = []
+
+    # Generate and enqueue 100k random wallets
+    for _ in range(100000):
+        wallet = generate_wallet()
+        wallet_queue.put(wallet)
+
+    # Start 100 threads to scan wallets in parallel
+    for _ in range(100):
+        t = threading.Thread(target=worker)
+        t.start()
+        threads.append(t)
+
+    # Wait for any thread to find a wallet with at least 1 SOL
+    for t in threads:
+        t.join()
+
+# Run the scan
+scan()
